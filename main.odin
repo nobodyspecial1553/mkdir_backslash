@@ -128,12 +128,32 @@ main :: proc() {
 			}
 			if last_backslash < len(input_dir_file_info.name) - 1 { // Ensures at least one character for file name
 				new_name := fmt.tprintf("%s/%s", dirs, input_dir_file_info.name[last_backslash + 1:])
-				rename_err := os.rename(input_dir_file_info.name, new_name)
-				if rename_err != nil {
-					log.panicf("Failed to rename \"%s\" to \"%s\": %v", input_dir_file_info.name, new_name, rename_err)
+				if .No_Delete in convert_info.flags {
+					old_file_data, old_file_data_read_success := os.read_entire_file_from_filename(input_dir_file_info.name, context.temp_allocator)
+					if old_file_data_read_success == false {
+						log.panicf("Failed to read \"%s\"", input_dir_file_info.name)
+					}
+
+					new_file_fd, new_file_fd_err := os.open(new_name, os.O_WRONLY | os.O_CREATE, 0o666)
+					if new_file_fd_err != nil {
+						log.panicf("Failed to copy \"%s\" to \"%s\": %v", input_dir_file_info.name, new_name, new_file_fd_err)
+					}
+					defer os.close(new_file_fd)
+
+					_, file_write_err := os.write(new_file_fd, old_file_data)
+					if file_write_err != nil {
+						log.panicf("Failed to copy \"%s\" to \"%s\": %v", input_dir_file_info.name, new_name, new_file_fd_err)
+					}
+					log.infof("Copied \"%s\" to \"%s\"", input_dir_file_info.name, new_name)
 				}
 				else {
-					log.infof("Renamed \"%s\" to \"%s\"", input_dir_file_info.name, new_name)
+					rename_err := os.rename(input_dir_file_info.name, new_name)
+					if rename_err != nil {
+						log.panicf("Failed to rename \"%s\" to \"%s\": %v", input_dir_file_info.name, new_name, rename_err)
+					}
+					else {
+						log.infof("Renamed \"%s\" to \"%s\"", input_dir_file_info.name, new_name)
+					}
 				}
 			}
 			else {
