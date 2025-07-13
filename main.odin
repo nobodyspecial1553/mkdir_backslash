@@ -8,12 +8,7 @@
 	 Usage:
 	 --no-delete: If the input files and output files are the same area, the input files will be automatically deleted, passing this flag prevents that
 	 -r, --recursive: Recursively descends subdirectories
-	 -d <string>, --output-dir <string>, --output-directory <string>: Sets output location [**CURRENTLY DOES NOT WORK**]
-*/
-
-/*
-	 TODO:
-	 Implement selecting output directory
+	 -d <string>, --output-dir <string>, --output-directory <string>: Sets output location
 */
 
 package main
@@ -24,7 +19,6 @@ import "core:os"
 import "core:strings"
 @(require) import "core:mem"
 import "core:container/queue"
-import "core:mem/virtual"
 
 main :: proc() {
 	when ODIN_DEBUG {
@@ -54,7 +48,7 @@ main :: proc() {
 	}
 	logger_lowest: log.Level = .Debug when ODIN_DEBUG else .Info
 	logger_options := log.Default_Console_Logger_Opts
-	context.logger = { log.file_console_logger_proc, &logger_data, logger_lowest, logger_options }
+	context.logger = { log.file_logger_proc, &logger_data, logger_lowest, logger_options }
 
 	/*
 		 // Could reintroduce if it got more use
@@ -65,16 +59,17 @@ main :: proc() {
 	}
 	defer virtual.arena_destroy(&arena)
 	arena_allocator := virtual.arena_allocator(&arena)
-
-	root_directory := os.get_current_directory(arena_allocator)
 	*/
-
-	root_directory := os.get_current_directory()
-	defer delete(root_directory)
 
 	convert_info := convert_info_create(os.args)
 	convert_info.input_dir = "." if convert_info.input_dir == "" else convert_info.input_dir
 	convert_info.output_dir = convert_info.input_dir if convert_info.output_dir == "" else convert_info.output_dir
+	if os_err := make_directories_recursive(convert_info.output_dir); os_err != nil {
+		log.fatalf("Failed to make output directory \"%s\": %v", convert_info.output_dir, os_err)
+	}
+	if convert_info.output_dir[len(convert_info.output_dir) - 1] == '/' {
+		convert_info.output_dir = convert_info.output_dir[:len(convert_info.output_dir) - 1]
+	}
 
 	tasks: queue.Queue(string)
 	queue.init(&tasks)
@@ -92,9 +87,6 @@ main :: proc() {
 			log.panicf("\"%s\" is not a directory!", input_dir_path)
 		}
 
-		os.set_current_directory(input_dir_path)
-		defer os.set_current_directory(root_directory)
-		
 		input_dir_file_infos, input_dir_file_infos_err := os.read_dir(input_dir_fd, -1, context.temp_allocator)
 		if input_dir_file_infos_err != nil {
 			log.panicf("Failed to read directory \"%s\": %v", input_dir_path, input_dir_file_infos_err)
@@ -118,20 +110,23 @@ main :: proc() {
 				continue
 			}
 
-			dirs: string
+			directory: string
 			if last_backslash > 0 { // > 0 to ensure at least one letter for directory
-				dirs, _ = strings.replace_all(input_dir_file_info.name[:last_backslash], "\\", "/", context.temp_allocator)
-				make_directories_err := make_directories_recursive(dirs)
+				in_directory, _ := strings.replace_all(input_dir_file_info.name[:last_backslash], "\\", "/", context.temp_allocator)
+				directory = fmt.tprintf("%s/%s", convert_info.output_dir, in_directory)
+				make_directories_err := make_directories_recursive(directory)
 				if make_directories_err != nil {
-					log.panicf("Failed to make directories \"%s\": %v", dirs, make_directories_err)
+					log.panicf("Failed to make directories \"%s\": %v", directory, make_directories_err)
 				}
 			}
+
 			if last_backslash < len(input_dir_file_info.name) - 1 { // Ensures at least one character for file name
-				new_name := fmt.tprintf("%s/%s", dirs, input_dir_file_info.name[last_backslash + 1:])
-				if .No_Delete in convert_info.flags {
+				new_name := fmt.tprintf("%s/%s", directory, input_dir_file_info.name[last_backslash + 1:])
+
+				if .No_Delete in convert_info.flags || convert_info.input_dir != convert_info.output_dir {
 					old_file_data, old_file_data_read_success := os.read_entire_file_from_filename(input_dir_file_info.name, context.temp_allocator)
 					if old_file_data_read_success == false {
-						log.panicf("Failed to read \"%s\"", input_dir_file_info.name)
+						log.fatalf("Failed to read \"%s\"", input_dir_file_info.name)
 					}
 
 					new_file_fd, new_file_fd_err := os.open(new_name, os.O_WRONLY | os.O_CREATE, 0o666)
