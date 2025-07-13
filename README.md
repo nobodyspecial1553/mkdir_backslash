@@ -11,7 +11,7 @@ and fix the output into the correct result.
 
 ### Flags:
 `--no-delete`: If the input files and output files are the same directory, the input files will be automatically deleted, passing this flag prevents that!  
-`-r, --recursive`: Recursively descends subdirectorie  
+`-r, --recursive`: Recursively descends subdirectories  
 `-d <string>, --output-dir <string>, --output-directory <string>`: Sets output location  
 
 ### Build:
