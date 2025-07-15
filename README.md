@@ -10,10 +10,10 @@ and fix the output into the correct result.
 `mkdir_backslash [flags] <input directory>`  
 
 ### Flags:
-`--no-delete: If the input and output location are the same, the input will be deleted, passing this flag prevents that.`  
+`--no-delete:` If the input and output location are the same, the input will be deleted, passing this flag prevents that.  
 `-r, --recursive`: Recursively descends subdirectories  
 `-d <string>, --output-dir <string>, --output-directory <string>`: Sets output location  
-`-h, --help: Prints help message and exists`  
+`-h, --help:` Prints help message and exists  
 
 ### Build:
 ```
