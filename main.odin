@@ -1,14 +1,15 @@
 /*
-	 The origin of this program was to convert the file names of an
-	 erroneously zipped program. It used backslashes instead of
-	 forward slashes, so they unzipped as files only,
-	 no directories. You can use this program to take those files
-	 and fix the output into the correct result.
+		The origin of this program was to convert the file names of an
+		erroneously zipped program. It used backslashes instead of
+		forward slashes, so they unzipped as files only,
+		no directories. You can use this program to take those files
+		and fix the output into the correct result.
 
-	 Usage:
-	 --no-delete: If the input files and output files are the same area, the input files will be automatically deleted, passing this flag prevents that
-	 -r, --recursive: Recursively descends subdirectories
-	 -d <string>, --output-dir <string>, --output-directory <string>: Sets output location
+		Usage:
+		--no-delete: If the input and output location are the same, the input will be deleted, passing this flag prevents that.
+		-r, --recursive: Recursively descends subdirectories
+		-d <string>, --output-dir <string>, --output-directory <string>: Sets output location
+		-h, --help: Prints help message and exists`
 */
 
 package main
@@ -187,6 +188,9 @@ convert_info_create :: proc(args: []string) -> (convert_info: Convert_Info) {
 			if len(args) <= 1 { return }
 			args = args[1:]
 			convert_info.output_dir = args[0]
+		case "-h", "--help":
+			print_help_message()
+			os.exit(0)
 		case "--":
 			break args_parse_loop
 		case: // Input
@@ -233,4 +237,24 @@ make_directories_recursive :: proc(
 	}
 
 	return
+}
+
+print_help_message :: proc() {
+	@(static, rodata)
+	HELP_MSG_STRING := `Usage: %s [flags] <src_directory>
+--no-delete: If the input and output location are the same, the input will be deleted, passing this flag prevents that.
+-r, --recursive: Recursively descends subdirectories in the output
+-d <string>, --output-dir <string>, --output-directory <string>: Sets output location
+-h, --help: Prints help message and exists`
+
+	exec_name := os.args[0]
+	last_slash := 0
+	for r, idx in exec_name {
+		if r == '/' {
+			last_slash = idx
+		}
+	}
+	exec_name = exec_name[last_slash + 1:]
+
+	fmt.printfln(HELP_MSG_STRING, exec_name)
 }
