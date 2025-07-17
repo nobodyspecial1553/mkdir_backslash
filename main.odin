@@ -251,10 +251,10 @@ print_help_message :: proc() {
 	last_slash := 0
 	for r, idx in exec_name {
 		if r == '/' {
-			last_slash = idx
+			last_slash = idx + 1
 		}
 	}
-	exec_name = exec_name[last_slash + 1:]
+	exec_name = exec_name[last_slash:]
 
 	fmt.printfln(HELP_MSG_STRING, exec_name)
 }
